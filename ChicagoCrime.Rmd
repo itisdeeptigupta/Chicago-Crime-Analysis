@@ -1,0 +1,409 @@
+---
+title: "ChicagoCrime"
+author: "Pallava Arasu Pari, Rahul Rajesh Munot, Shriya Deshmukh, Deepti Gupta"
+date: "August 7, 2018"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This Project is inclined towards developing a linear regression model which would detect likeliness of arrest for a crime conducted in Chicago. 
+
+We used data set from Chicago crime database which is from the following link:
+https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2
+
+
+Packages and Libraries
+
+```{r}
+
+#install.packages("GGally")
+#install.packages("Rmisc")
+#install.packages("lubridate")
+#install.packages("ggplot2")
+
+library(GGally)
+library(Rmisc)
+library(lubridate)
+library(ggplot2)
+
+```
+
+
+
+Loading the Source file
+We already downloaded the source file, we are now loading it
+```{r}
+
+setwd("C:/MyRWork/Data/ChicagoCrime")
+rawSrcData<-read.csv("Crimes_-_2001_to_present.csv")
+nrow(rawSrcData)
+
+```
+
+
+Select subset of data we require for our analysis. Lets take the data from year 2013 
+```{r}
+modDS1<-rawSrcData
+modDS1<-modDS1[modDS1$Year!="2001",]
+modDS1<-modDS1[modDS1$Year!="2002",]
+modDS1<-modDS1[modDS1$Year!="2003",]
+modDS1<-modDS1[modDS1$Year!="2004",]
+modDS1<-modDS1[modDS1$Year!="2005",]
+modDS1<-modDS1[modDS1$Year!="2006",]
+modDS1<-modDS1[modDS1$Year!="2007",]
+modDS1<-modDS1[modDS1$Year!="2008",]
+modDS1<-modDS1[modDS1$Year!="2009",]
+modDS1<-modDS1[modDS1$Year!="2010",]
+modDS1<-modDS1[modDS1$Year!="2011",]
+modDS1<-modDS1[modDS1$Year!="2012",]
+sort(unique(modDS1$Year))
+``` 
+
+
+
+Add Different Date Metrics to slice and Dice the crime data
+```{r}
+
+modDS2<-modDS1
+modDS2$Date <- as.Date(modDS2$Date, "%m/%d/%Y %I:%M:%S %p")
+modDS2$Day<-factor(day(as.POSIXlt(modDS2$Date, format="%m/%d/%Y %I:%M:%S %p")))
+modDS2$Weekday <- factor(wday(as.POSIXlt(modDS2$Date, format="%m/%d/%Y %I:%M:%S %p"), label = TRUE))
+modDS2$Month <- factor(month(as.POSIXlt(modDS2$Date, format="%m/%d/%Y %I:%M:%S %p"), label = TRUE))
+modDS2$Year <- factor(year(as.POSIXlt(modDS2$Date, format="%m/%d/%Y %I:%M:%S %p")))
+```
+
+
+
+Factorize the required variables as categorical variables
+```{r}
+modDS3<-modDS2
+modDS3$Primary.Type<-as.factor(modDS3$Primary.Type)
+modDS3$Location.Description<-as.factor(modDS3$Location.Description)
+modDS3$Arrest<-as.factor(modDS3$Arrest)
+modDS3$Month<-as.factor(modDS3$Month)
+modDS3$Weekday<-as.factor(modDS3$Weekday)
+modDS3$Year<-as.factor(modDS3$Year)
+modDS3$Beat<-as.factor(modDS3$Beat)
+modDS3$District<-as.factor(modDS3$District)
+```
+
+
+remove whitespaces
+```{r}
+modDS4<-modDS3
+
+modDS4<-modDS4[modDS4$Primary.Type!="",]
+modDS4<-modDS4[modDS4$Location.Description!="",]
+modDS4<-modDS4[modDS4$Arrest!="",]
+modDS4<-modDS4[modDS4$Beat!="",]
+modDS4<-modDS4[modDS4$Weekday!="",]
+modDS4<-modDS4[modDS4$Month!="",]
+modDS4<-modDS4[modDS4$District!="",]
+```
+
+
+Remove missing values
+```{r}
+modDS5<-modDS4
+modDS5<-na.omit(modDS5)
+```
+
+
+removing duplicates and cleansing the data
+```{r}
+#removing duplicates
+modDS6<-modDS5
+modDS6<-modDS6[!duplicated(modDS6$'Case.Number',modDS6$Date),]
+
+#cleansing the data
+modDS6$Primary.Type <- gsub("(.*)NON(.*)CRIMINAL(.*)","NON-CRIMINAL",modDS6$Primary.Type)
+modDS6$Location.Description <- gsub("(.*)AIRPORT(.*)","AIRPORT",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("AUTO(.*)","AUTO",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("CHA(.*)","CHA",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("CHURCH(.*)","CHURCH",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("CLEAN(.*)","CLEANERS",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("COLLEGE(.*)","COLLEGE",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("CTA(.*)","CTA",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("DRIVEWAY(.*)","DRIVEWAY",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("GARAGE(.*)","GARAGE",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("GAS(.*)","GAS STATION",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("GOVERNMENT(.*)","GOVERNMENT BUIDING",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("HOSPITAL(.*)","HOSPITAL",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("HOTEL(.*)","HOTEL",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("NURSING(.*)","NURSING HOME",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("OTHER(.*)TRA(.*)","OTHER TRANSPORTATION",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("PARKING(.*)","PARKING",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("POOL(.*)","POOL ROOM",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("RESIDE(.*)","RESIDENCE",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("SCHOOL(.*)","SCHOOL",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("TAVERN(.*)","TAVERN",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("TAXI(.*)","TAXI CAB",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("VACANT(.*)","VACANT",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("VEHICLE(.*)","VEHICLE",modDS6$Location.Description)
+modDS6$Location.Description <- gsub("BARBER(.*)","BARBER SHOP",modDS6$Location.Description)
+
+
+sort(unique(modDS6$Primary.Type))
+sort(unique(modDS6$Location.Description))
+```
+
+
+
+Data Exploration : here we tried to understand the trends and patterns occuring in 
+the data
+
+```{r}
+
+modDS6DE <- modDS6
+
+# Removing year 2018 data as it is only from january-june, the graphs might get 
+# impacted when they are plotted monthwise 
+modDS6DE<-modDS6DE[modDS6DE$Year!="2018",]
+
+
+
+#Question - What is the pattern of crime over the recent years?
+DSCountWithYear <- data.frame(Year = modDS6DE$Year, Arrest = modDS6DE$Arrest)
+ggplot(DSCountWithYear, aes(Year,fill = factor(Arrest))) +stat_count(width = 0.5)
+#Observation - The crime seems to be decreasing and specifically the arrest seems to be decreasing
+
+
+#Question - What is the pattern of crime when analysed monthwise?
+DSCountWithTime <- data.frame(Month = modDS6DE$Month, Arrest = modDS6DE$Arrest)
+ggplot() + geom_bar(aes(x=Month, y=Arrest, fill=factor(Arrest)), size=1,
+                           data = DSCountWithTime, stat="identity")
+#Observation - Crime is supposed to highest in July, August, Low in winters and lowest
+# in the month of february
+
+
+
+# Question - What is the patterns of crime over the weekdays?
+DSCountWeekdays <- aggregate(Arrest~Weekday,FUN=length,data=modDS6DE)
+ggplot() + geom_bar(aes(y = Arrest, x = Weekday, fill=Weekday), size=0.5,
+                           data = DSCountWeekdays, stat="identity")
+# Crimes are occuring maximum during friday, saturday
+
+
+
+#Question - What is the pattern of crime district wise?
+DSCountWithDistrict <- data.frame(District = modDS6DE$District, Arrest = modDS6DE$Arrest)
+ggplot(DSCountWithDistrict, aes(District,fill = factor(Arrest))) +stat_count(width = 0.5)
+#Observation - District 8 and 11 have the highest number and 20 has the lowest
+
+
+
+# Question - What are the most prone and less prone crimes occuring in the city of chicago?
+DSCountPrimaryType1 <- data.frame(Primary.Type = modDS6DE$Primary.Type, Arrest = modDS6DE$Arrest)
+ggplot(DSCountPrimaryType1, aes(Primary.Type, fill = factor(Arrest))) +stat_count(width = 0.5) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+DSCountPrimaryType <- aggregate(Arrest~Primary.Type + Weekday,FUN=length,data=modDS6DE)
+summary(DSCountPrimaryType)
+DSCountPrimaryType$Level <- ifelse(DSCountPrimaryType$Arrest > 7000, "High", "Low")
+
+ggplot(DSCountPrimaryType, aes(y= log(Arrest), x=Primary.Type, fill = Level) )+ 
+    geom_bar(position="dodge", stat="identity") +     coord_flip()
+# Observation - The first graph had really low values which were not observable, 
+# which is why we took the log values which shows the clear trend. The most popular 
+# crimes are Theft, battery, burglary and narcotics
+
+
+# Question - Analyse the pattern of top crimes occuring over the weekdays?
+
+g1<- ggplot(subset(DSCountPrimaryType, Primary.Type=='THEFT'), 
+    aes(y=Arrest, x=Weekday, fill = Arrest), size = 1) + 
+    geom_bar( stat="identity") +
+    ggtitle("Number of Arrests for theft on weekdays")
+
+g2<- ggplot(subset(DSCountPrimaryType, Primary.Type=='BATTERY'), 
+    aes(y=Arrest, x=Weekday, fill = Arrest), size = 1) + 
+    geom_bar( stat="identity") +
+    ggtitle("Number of Arrests for battery on weekdays")
+
+g3<- ggplot(subset(DSCountPrimaryType, Primary.Type=='NARCOTICS'), 
+    aes(y=Arrest, x=Weekday, fill = Arrest), size = 1) + 
+    geom_bar( stat="identity") +
+    ggtitle("Number of Arrests for narcotics on weekdays")
+
+g4<- ggplot(subset(DSCountPrimaryType, Primary.Type=='CRIMINAL DAMAGE'), 
+    aes(y=Arrest, x=Weekday, fill = Arrest), size = 1) + 
+    geom_bar( stat="identity") +
+    ggtitle("Number of Arrests for criminal damage on weekdays")
+
+g5<- ggplot(subset(DSCountPrimaryType, Primary.Type=='ROBBERY'), 
+    aes(y=Arrest, x=Weekday, fill = Arrest), size = 1) + 
+    geom_bar( stat="identity") +
+    ggtitle("Number of Arrests for robbery on weekdays")
+
+g6<- ggplot(subset(DSCountPrimaryType, Primary.Type=='MOTOR VEHICLE THEFT'), 
+    aes(y=Arrest, x=Weekday, fill = Arrest), size = 1) + 
+    geom_bar( stat="identity") +
+    ggtitle("Number of Arrests for motor vehicle theft on weekdays")
+
+multiplot(g1, g2, g3, g4, g5, g6, cols=2)
+# Observation - all the top crimes shows a same pattern of having high occurrences 
+# during friday and saturdays
+
+
+```
+
+
+
+Deriving Correlation among the variables which can be logically related
+```{r}
+
+modDS7Cor <- modDS3
+modDS7Cor<-modDS7Cor[modDS7Cor$Year!="2018",]
+
+
+# Below columns are definitely not logically related to data, e.g. x coordinates and 
+# y coordinates are generally very precise values which will have very less chance
+# of being duplicate. ID, Case Number will be unique for every crime occurance. So
+# the values which will be unique for almost all the rows should be eliminated
+
+
+modDS7Cor$ID <- NULL
+modDS7Cor$Case.Number<-NULL
+modDS7Cor$Date<-NULL
+modDS7Cor$X.Coordinate <- NULL
+modDS7Cor$Y.Coordinate <- NULL
+modDS7Cor$Updated.On<-NULL
+modDS7Cor$Latitude<-NULL
+modDS7Cor$Longitude<-NULL
+modDS7Cor$Location<-NULL
+modDS7Cor$Block<-NULL
+modDS7Cor$IUCR <- NULL
+modDS7Cor$Description<-NULL
+
+head(modDS7Cor)
+unique(sort(modDS7Cor$FBI.Code))
+
+modDS7Cor$Location.Description = factor(modDS7Cor$Location.Description,levels =c('ABANDONED BUILDING','AIRCRAFT','AIRPORT','ALLEY','ANIMAL HOSPITAL','APARTMENT','APPLIANCE STORE','ATHLETIC CLUB','ATM (AUTO','AUTO','BANK','BAR OR TAVERN','BARBER SHOP','BASEMENT','BOAT/WATERCRAFT','BOWLING ALLEY','BRIDGE','CAR WASH','CEMETARY','CHA','CHURCH','CLEANERS','CLUB','COIN OPERATED MACHINE','COLLEGE','COMMERCIAL / BUSINESS OFFICE','CONSTRUCTION SITE','CONVENIENCE STORE','CREDIT UNION','CTA','CURRENCY EXCHA','DAY CARE CENTER','DELIVERY TRUCK','DEPARTMENT STORE','DRIVEWAY','DRUG STORE','ELEVATOR','EXPRESSWAY EMBANKMENT','FACTORY/MANUFACTURING BUILDING','FARM','FEDERAL BUILDING','FIRE STATION','FOREST PRESERVE','GANGWAY','GARAGE','GAS STATION','GOVERNMENT BUIDING','GROCERY FOOD STORE','HALLWAY','HIGHWAY/EXPRESSWAY','HORSE STABLE','HOSPITAL','HOTEL','HOUSE','JAIL / LOCK-UP FACILITY','LAGOON','LAKEFRONT/WATERFRONT/RIVERBANK','LAUNDRY ROOM','LIBRARY','LIQUOR STORE','MEDICAL/DENTAL OFFICE','MOTEL','MOVIE HOUSE/THEATER','NEWSSTAND','NURSING HOME','OFFICE','OTHER','OTHER TRANSPORTATION','PARK PROPERTY','PARKING','PAWN SHOP','POLICE FACILITY/VEH PARKING','POOL ROOM','PORCH','RAILROAD PROPERTY','RESIDENCE','RESTAURANT','RETAIL STORE','RIVER BANK','ROOMING HOUSE','SAVINGS AND LOAN','SCHOOL','SIDEWALK','SMALL RETAIL STORE','SPORTS ARENA/STADIUM','STAIRWELL','STREET','TAVERN','TAXI CAB','TRUCK','VACANT','VEHICLE','VESTIBULE','WAREHOUSE','YARD','YMCA'),labels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96))
+modDS7Cor$Location.Description = as.numeric(modDS7Cor$Location.Description)
+
+
+modDS7Cor$Primary.Type = factor(modDS7Cor$Primary.Type,levels =c('ARSON','ASSAULT','BATTERY','BURGLARY','CONCEALED CARRY LICENSE VIOLATION','CRIM SEXUAL ASSAULT','CRIMINAL DAMAGE','CRIMINAL TRESPASS','DECEPTIVE PRACTICE','GAMBLING','HOMICIDE','HUMAN TRAFFICKING','INTERFERENCE WITH PUBLIC OFFICER','INTIMIDATION','KIDNAPPING','LIQUOR LAW VIOLATION','MOTOR VEHICLE THEFT','NARCOTICS','NON-CRIMINAL','OBSCENITY','OFFENSE INVOLVING CHILDREN','OTHER NARCOTIC VIOLATION','OTHER OFFENSE','PROSTITUTION','PUBLIC INDECENCY','PUBLIC PEACE VIOLATION','ROBBERY','SEX OFFENSE',
+'STALKING','THEFT','WEAPONS VIOLATION'),labels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31))
+modDS7Cor$Primary.Type = as.numeric(modDS7Cor$Primary.Type)
+
+
+modDS7Cor$FBI.Code = factor(modDS7Cor$FBI.Code,levels =c("01A","01B","02","03","04A","04B","05","06","07","08A","08B" ,"09","10","11","12","13","14","15","16","17","18","19","20","22","24","26"),  labels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26))
+modDS7Cor$FBI.Code = as.numeric(modDS7Cor$FBI.Code)
+
+modDS7Cor$Arrest = factor(modDS7Cor$Arrest,levels = c('false','true'),labels = c(0,1))
+modDS7Cor$Arrest = as.numeric(modDS7Cor$Arrest)
+
+modDS7Cor$Domestic = factor(modDS7Cor$Domestic,levels = c('false','true'),labels = c(0,1))
+modDS7Cor$Domestic = as.numeric(modDS7Cor$Domestic)
+
+
+modDS7Cor$Weekday<-factor(modDS7Cor$Weekday,levels = c('Sun','Mon','Tue','Wed','Thu','Fri','Sat'),labels = c(0,1,2,3,4,5,6))
+modDS7Cor$Weekday = as.numeric(modDS7Cor$Weekday)
+
+modDS7Cor$Month<-factor(modDS7Cor$Month,levels = c('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'),labels = c(0,1,2, 3,4,5,6,7,8,9,10,11))
+modDS7Cor$Month = as.numeric(modDS7Cor$Month)
+
+
+modDS7Cor$Beat = as.numeric(modDS7Cor$Beat)
+modDS7Cor$District = as.numeric(modDS7Cor$District)
+modDS7Cor$Year = as.numeric(modDS7Cor$Year)
+modDS7Cor$Day = as.numeric(modDS7Cor$Day)
+
+str(modDS7Cor)
+
+
+cor(modDS7Cor)
+ggcorr(modDS7Cor,label = TRUE,label_alpha = TRUE)
+
+
+
+```
+
+
+Exploratory analysis concluded that Primary.Type,Location.Description,Arrest,Month,Weekday,Year,Beat,District are the influential variables
+```{r}
+modDS7<-modDS6
+modDS7<-subset(modDS7,select = c('Primary.Type','Location.Description','Arrest','Beat','Weekday','Month','District','Year'))
+
+```
+
+
+Data Modelling
+Change categorical values to numbers
+```{r}
+modDS8<-modDS7
+sort(unique(modDS8$Location.Description))
+
+modDS8$Location.Description = factor(modDS8$Location.Description,levels =c('ABANDONED BUILDING','AIRCRAFT','AIRPORT','ALLEY','ANIMAL HOSPITAL','APARTMENT','APPLIANCE STORE','ATHLETIC CLUB','ATM (AUTO','AUTO','BANK','BAR OR TAVERN','BARBER SHOP','BASEMENT','BOAT/WATERCRAFT','BOWLING ALLEY','BRIDGE','CAR WASH','CEMETARY','CHA','CHURCH','CLEANERS','CLUB','COIN OPERATED MACHINE','COLLEGE','COMMERCIAL / BUSINESS OFFICE','CONSTRUCTION SITE','CONVENIENCE STORE','CREDIT UNION','CTA','CURRENCY EXCHA','DAY CARE CENTER','DELIVERY TRUCK','DEPARTMENT STORE','DRIVEWAY','DRUG STORE','ELEVATOR','EXPRESSWAY EMBANKMENT','FACTORY/MANUFACTURING BUILDING','FARM','FEDERAL BUILDING','FIRE STATION','FOREST PRESERVE','GANGWAY','GARAGE','GAS STATION','GOVERNMENT BUIDING','GROCERY FOOD STORE','HALLWAY','HIGHWAY/EXPRESSWAY','HORSE STABLE','HOSPITAL','HOTEL','HOUSE','JAIL / LOCK-UP FACILITY','LAGOON','LAKEFRONT/WATERFRONT/RIVERBANK','LAUNDRY ROOM','LIBRARY','LIQUOR STORE','MEDICAL/DENTAL OFFICE','MOTEL','MOVIE HOUSE/THEATER','NEWSSTAND','NURSING HOME','OFFICE','OTHER','OTHER TRANSPORTATION','PARK PROPERTY','PARKING','PAWN SHOP','POLICE FACILITY/VEH PARKING','POOL ROOM','PORCH','RAILROAD PROPERTY','RESIDENCE','RESTAURANT','RETAIL STORE','RIVER BANK','ROOMING HOUSE','SAVINGS AND LOAN','SCHOOL','SIDEWALK','SMALL RETAIL STORE','SPORTS ARENA/STADIUM','STAIRWELL','STREET','TAVERN','TAXI CAB','TRUCK','VACANT','VEHICLE','VESTIBULE','WAREHOUSE','YARD','YMCA'),labels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96))
+
+
+modDS8$Primary.Type = factor(modDS8$Primary.Type,levels =c('ARSON','ASSAULT','BATTERY','BURGLARY','CONCEALED CARRY LICENSE VIOLATION','CRIM SEXUAL ASSAULT','CRIMINAL DAMAGE','CRIMINAL TRESPASS','DECEPTIVE PRACTICE','GAMBLING','HOMICIDE','HUMAN TRAFFICKING','INTERFERENCE WITH PUBLIC OFFICER','INTIMIDATION','KIDNAPPING','LIQUOR LAW VIOLATION','MOTOR VEHICLE THEFT','NARCOTICS','NON-CRIMINAL','OBSCENITY','OFFENSE INVOLVING CHILDREN','OTHER NARCOTIC VIOLATION','OTHER OFFENSE','PROSTITUTION','PUBLIC INDECENCY','PUBLIC PEACE VIOLATION','ROBBERY','SEX OFFENSE',
+'STALKING','THEFT','WEAPONS VIOLATION'),labels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31))
+
+
+modDS8$Arrest = factor(modDS8$Arrest,levels = c('false','true'),labels = c(0,1))
+
+modDS8$Weekday<-factor(modDS8$Weekday,levels = c('Sun','Mon','Tue','Wed','Thu','Fri','Sat'),labels = c(0,1,2,3,4,5,6))
+
+modDS8$Month<-factor(modDS8$Month,levels = c('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'),labels = c(0,1,2, 3,4,5,6,7,8,9,10,11))
+
+head(modDS8)
+
+```
+# lets create some dummy variables to list features and arrests
+```{r}
+
+modDS9<-modDS8
+
+# After facing error in knn model with large data set, i reduced the training data set to 50000
+modDS9<-data.frame(modDS9)
+index<-sample(1:nrow(modDS9),50000)
+modDS9<-modDS9[index,]
+
+#lets list the number of arrest happend in the dataset and use it in the training.
+arrest_factor=modDS9$Arrest
+
+#lets create dummy variables as for all combination of features and provide arrest factor for those
+dummy_features<-model.matrix(Arrest~.-1,data = modDS9)
+
+#Lets split the data set with respect to row index, we can use the same to match the dummy arrest
+set.seed(1234)
+split_index=sample(1:2, length(modDS9$Arrest),replace= T, prob = c(.8,.2))
+
+```
+#lets determine the training and testing data set based on the split critera
+```{r}
+#determinind the training and testing data set
+train_data=dummy_features[split_index==1,]
+test_data=dummy_features[split_index==2,]
+
+#determine the training and testing arrest factor with the split index
+train_arrest_factor=arrest_factor[split_index==1]
+test_arrest_factor=arrest_factor[split_index==2]
+
+```
+
+#lets use knn model to dertmine
+#KNN Model:
+```{r}
+#got error with too many ties in knn. so reduced the sample size
+
+require(class)
+model<-knn(train=train_data, test=test_data, cl=train_arrest_factor, k=144)
+```
+
+```{r}
+#Accuracy Rate
+sum(model==test_arrest_factor)/length(model)
+
+#Confusion Matrix
+table(model, test_arrest_factor)
+
+```
